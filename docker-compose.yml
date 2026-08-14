@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: myerp_postgres
+    environment:
+      POSTGRES_USER: myerp_dev
+      POSTGRES_PASSWORD: myerp_dev_password
+      POSTGRES_DB: myerp_dev
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - myerp_network
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U myerp_dev']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend will be added later
+  # backend:
+  #   build: ./backend
+  #   ports:
+  #     - '3001:3001'
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #   environment:
+  #     DATABASE_URL: postgresql://myerp_dev:myerp_dev_password@postgres:5432/myerp_dev
+  #     JWT_SECRET: your_jwt_secret_here
+  #     NODE_ENV: development
+  #   networks:
+  #     - myerp_network
+
+volumes:
+  postgres_data:
+
+networks:
+  myerp_network:
+    driver: bridge

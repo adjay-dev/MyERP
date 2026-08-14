@@ -1,0 +1,231 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Company (Tenant)
+model Company {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  users     User[]
+  products  Product[]
+  customers Customer[]
+  suppliers Supplier[]
+  sales     Sale[]
+  purchases Purchase[]
+  expenses  Expense[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([name])
+}
+
+// User
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      Role     @default(EMPLOYEE)
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([companyId])
+  @@index([email])
+}
+
+enum Role {
+  ADMIN
+  MANAGER
+  EMPLOYEE
+  ACCOUNTANT
+}
+
+// Product
+model Product {
+  id             String   @id @default(cuid())
+  sku            String
+  name           String
+  description    String?
+  barcode        String?
+  costPrice      Float
+  salePrice      Float
+  minimumStock   Int      @default(0)
+  currentStock   Int      @default(0)
+  unit           String   @default("UN")
+  status         String   @default("ACTIVE")
+  category       Category? @relation(fields: [categoryId], references: [id])
+  categoryId     String?
+  company        Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId      String
+  saleItems      SaleItem[]
+  purchaseItems  PurchaseItem[]
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([sku, companyId])
+  @@index([companyId])
+  @@index([categoryId])
+}
+
+// Category
+model Category {
+  id        String    @id @default(cuid())
+  name      String
+  products  Product[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@unique([name])
+}
+
+// Customer
+model Customer {
+  id        String   @id @default(cuid())
+  name      String
+  company   String?
+  nif       String?
+  email     String?
+  phone     String?
+  address   String?
+  city      String?
+  country   String?
+  notes     String?
+  sales     Sale[]
+  company2  Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([companyId])
+  @@index([email])
+}
+
+// Supplier
+model Supplier {
+  id        String      @id @default(cuid())
+  name      String
+  company   String?
+  nif       String?
+  email     String?
+  phone     String?
+  address   String?
+  notes     String?
+  purchases Purchase[]
+  company2  Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId String
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  @@index([companyId])
+}
+
+// Sale
+model Sale {
+  id              String    @id @default(cuid())
+  saleNumber      String
+  customer        Customer  @relation(fields: [customerId], references: [id])
+  customerId      String
+  items           SaleItem[]
+  subtotal        Float     @default(0)
+  discount        Float     @default(0)
+  tax             Float     @default(0)
+  total           Float     @default(0)
+  paymentMethod   String    @default("CASH")
+  status          String    @default("PENDING")
+  invoiceNumber   String?
+  notes           String?
+  company         Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId       String
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@unique([saleNumber, companyId])
+  @@index([companyId])
+  @@index([customerId])
+}
+
+// Sale Item
+model SaleItem {
+  id        String   @id @default(cuid())
+  sale      Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  saleId    String
+  product   Product  @relation(fields: [productId], references: [id])
+  productId String
+  quantity  Int
+  unitPrice Float
+  discount  Float    @default(0)
+  subtotal  Float
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([saleId])
+  @@index([productId])
+}
+
+// Purchase
+model Purchase {
+  id              String          @id @default(cuid())
+  purchaseNumber  String
+  supplier        Supplier        @relation(fields: [supplierId], references: [id])
+  supplierId      String
+  items           PurchaseItem[]
+  subtotal        Float           @default(0)
+  tax             Float           @default(0)
+  total           Float           @default(0)
+  status          String          @default("PENDING")
+  paymentMethod   String          @default("CASH")
+  notes           String?
+  company         Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId       String
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@unique([purchaseNumber, companyId])
+  @@index([companyId])
+  @@index([supplierId])
+}
+
+// Purchase Item
+model PurchaseItem {
+  id         String   @id @default(cuid())
+  purchase   Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  purchaseId String
+  product    Product  @relation(fields: [productId], references: [id])
+  productId  String
+  quantity   Int
+  unitCost   Float
+  subtotal   Float
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([purchaseId])
+  @@index([productId])
+}
+
+// Expense
+model Expense {
+  id        String   @id @default(cuid())
+  category  String
+  description String?
+  amount    Float
+  paymentMethod String @default("CASH")
+  notes     String?
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId String
+  date      DateTime @default(now())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([companyId])
+  @@index([date])
+}
