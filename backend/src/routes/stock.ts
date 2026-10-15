@@ -74,15 +74,8 @@ router.get('/movements', authMiddleware, async (req: AuthenticatedRequest, res: 
 // Alerts
 router.get('/alerts', authMiddleware, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
-    const low = await prisma.product.findMany({ where: { companyId: req.user!.companyId, currentStock: { lte: prisma.literal ? 0 : 0 }, }, select: { id: true, name: true, currentStock: true, minimumStock: true } });
-    // Note: prisma.literal used above is a placeholder; fallback to direct comparison
-    // Simpler implementation:
-    const lowProducts = await prisma.product.findMany({ where: { companyId: req.user!.companyId, currentStock: { lte: prisma.raw ? undefined as any : undefined as any } } }).catch(()=>[]);
-
-    // To avoid complex raw usage, compute low-stock in JS
     const all = await prisma.product.findMany({ where: { companyId: req.user!.companyId } });
-    const lows = all.filter(p => p.currentStock <= p.minimumStock);
-
+    const lows = all.filter((p) => p.currentStock <= p.minimumStock);
     res.json({ success: true, data: lows });
   } catch (error) {
     next(error);

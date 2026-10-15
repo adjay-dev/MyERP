@@ -26,9 +26,13 @@ app.get('/', (req, res) => {
 // Error handling
 app.use(errorHandler);
 
-// Start server
-const port = env.API_PORT;
-app.listen(port, () => {
-  console.log(`✅ ${env.APP_NAME} API running on http://localhost:${port}`);
-  console.log(`📝 Documentation: http://localhost:${port}/api/docs`);
-});
+// Start server only when not in test environment
+if (env.NODE_ENV !== 'test') {
+  const port = env.API_PORT;
+  app.listen(port, () => {
+    console.log(`✅ ${env.APP_NAME} API running on http://localhost:${port}`);
+    console.log(`📝 Documentation: http://localhost:${port}/api/docs`);
+  });
+}
+
+export default app;
