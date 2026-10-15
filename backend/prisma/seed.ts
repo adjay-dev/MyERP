@@ -1,135 +1,69 @@
-import prisma from '../src/config/database';
-import { hashPassword } from '../src/utils/password';
+import prisma from './config/database';
+import bcrypt from 'bcryptjs';
 
 async function main() {
-  console.log('🌱 Seeding database...');
+  console.log('Running seed...');
 
-  try {
-    // Create a test company
-    const company = await prisma.company.create({
+  // Create demo company
+  const company = await prisma.company.upsert({
+    where: { name: 'MyERP Demo' },
+    update: {},
+    create: { name: 'MyERP Demo' },
+  });
+
+  // Create admin user
+  const adminEmail = 'admin@myerp.local';
+  const existing = await prisma.user.findUnique({ where: { email: adminEmail } });
+  if (!existing) {
+    const hashed = await bcrypt.hash('Test1234!', 10);
+    await prisma.user.create({
       data: {
-        name: 'Demo Company',
-      },
-    });
-
-    console.log('✅ Company created:', company.name);
-
-    // Create a test user (admin)
-    const hashedPassword = await hashPassword('Admin@123');
-    const user = await prisma.user.create({
-      data: {
-        email: 'admin@demo.com',
-        password: hashedPassword,
-        name: 'Admin User',
+        email: adminEmail,
+        password: hashed,
+        name: 'Admin Demo',
         role: 'ADMIN',
         companyId: company.id,
       },
     });
-
-    console.log('✅ User created:', user.email);
-
-    // Create test categories
-    const electronics = await prisma.category.create({
-      data: {
-        name: 'Eletrônicos',
-      },
-    });
-
-    const furniture = await prisma.category.create({
-      data: {
-        name: 'Móveis',
-      },
-    });
-
-    console.log('✅ Categories created');
-
-    // Create test products
-    const product1 = await prisma.product.create({
-      data: {
-        sku: 'PROD-001',
-        name: 'Laptop Dell XPS 13',
-        description: 'Laptop de alta performance',
-        barcode: '123456789',
-        costPrice: 800,
-        salePrice: 1200,
-        minimumStock: 5,
-        currentStock: 10,
-        unit: 'UN',
-        status: 'ACTIVE',
-        categoryId: electronics.id,
-        companyId: company.id,
-      },
-    });
-
-    const product2 = await prisma.product.create({
-      data: {
-        sku: 'PROD-002',
-        name: 'Mesa de Escritório',
-        description: 'Mesa para escritório',
-        barcode: '987654321',
-        costPrice: 100,
-        salePrice: 250,
-        minimumStock: 3,
-        currentStock: 8,
-        unit: 'UN',
-        status: 'ACTIVE',
-        categoryId: furniture.id,
-        companyId: company.id,
-      },
-    });
-
-    console.log('✅ Products created');
-
-    // Create test customers
-    const customer1 = await prisma.customer.create({
-      data: {
-        name: 'João Silva',
-        company: 'Empresa A',
-        email: 'joao@empresa.com',
-        phone: '+244923123456',
-        address: 'Rua Principal, 123',
-        city: 'Luanda',
-        country: 'Angola',
-        companyId: company.id,
-      },
-    });
-
-    const customer2 = await prisma.customer.create({
-      data: {
-        name: 'Maria Santos',
-        company: 'Empresa B',
-        email: 'maria@empresa.com',
-        phone: '+244923654321',
-        address: 'Rua Secundária, 456',
-        city: 'Luanda',
-        country: 'Angola',
-        companyId: company.id,
-      },
-    });
-
-    console.log('✅ Customers created');
-
-    // Create test supplier
-    const supplier = await prisma.supplier.create({
-      data: {
-        name: 'Distribuidor ABC',
-        company: 'ABC Distribuidora',
-        email: 'contato@abc.com',
-        phone: '+244912345678',
-        address: 'Rua do Comércio, 789',
-        companyId: company.id,
-      },
-    });
-
-    console.log('✅ Supplier created');
-
-    console.log('\n✨ Database seeded successfully!');
-  } catch (error) {
-    console.error('❌ Error seeding database:', error);
-    throw error;
-  } finally {
-    await prisma.$disconnect();
+    console.log('Created admin user:', adminEmail);
+  } else {
+    console.log('Admin user already exists');
   }
+
+  // Create default category
+  const category = await prisma.category.upsert({
+    where: { name_companyId: { name: 'General', companyId: company.id } },
+    update: {},
+    create: { name: 'General', companyId: company.id },
+  });
+
+  // Create sample product
+  const sku = 'DEMO-001';
+  await prisma.product.upsert({
+    where: { sku_companyId: { sku, companyId: company.id } },
+    update: {},
+    create: {
+      sku,
+      name: 'Produto Demo',
+      description: 'Produto de demonstração',
+      costPrice: 10.0,
+      salePrice: 15.0,
+      minimumStock: 5,
+      currentStock: 20,
+      unit: 'UN',
+      companyId: company.id,
+      categoryId: category.id,
+    },
+  });
+
+  console.log('Seed finished.');
 }
 
-main();
+main()
+  .catch((e) => {
+    console.error(e);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });
